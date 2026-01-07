@@ -77,43 +77,36 @@ resource "oci_core_instance" "controller_vm" {
   metadata = {
     ssh_authorized_keys = file(var.ssh_public_key_path)
     
-    # עדכון ה-Script להתקנת סביבת Node.js ו-OCI SDK
     user_data = base64encode(<<-EOF
       #!/bin/bash
-      # 1. עדכון המערכת והתקנת Node.js ו-NPM
+
+      # 1. הגדרת משתנה הסביבה באופן קבוע במערכת
+      echo 'export WORKER_INSTANCE_ID="${oci_core_instance.render_worker.id}"' >> /etc/profile.d/render_vars.sh
+      export WORKER_INSTANCE_ID="${oci_core_instance.render_worker.id}"
+
+      # 2. עדכון והתקנת Node.js ו-Git
       apt-get update
+      apt-get install -y git
       curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
       apt-get install -y nodejs
 
-      # 2. יצירת תיקיית עבודה לאפליקציה
-      mkdir -p /home/ubuntu/controller-backend
-      cd /home/ubuntu/controller-backend
+      # 3. הורדת הקוד מה-Repo
+      cd /home/ubuntu
+      git clone https://github.com/Amit18115/AWS1.git controller-backend
+      cd controller-backend
 
-      # 3. יצירת קובץ package.json בסיסי
-      cat <<EOT > package.json
-      {
-        "name": "controller-backend",
-        "version": "1.0.0",
-        "main": "index.js",
-        "dependencies": {
-          "express": "^4.18.2",
-          "oci-common": "^2.73.0",
-          "oci-core": "^2.73.0",
-          "oci-objectstorage": "^2.73.0"
-        }
-      }
-      EOT
-
-      git clone https://github.com/your-user/your-repo.git /home/ubuntu/controller-backend
-      cd /home/ubuntu/controller-backend
-      # 4. התקנת התלויות
+      # 4. התקנת תלויות ו-PM2
       npm install
+      npm install -g pm2
       
-      # 5. שינוי הרשאות לתיקייה כדי שמשתמש ubuntu יוכל לעבוד עליה
+      # 5. שינוי הרשאות ליוזר ubuntu כדי שיוכל להריץ את השרת
       chown -R ubuntu:ubuntu /home/ubuntu/controller-backend
 
-      echo "Node.js Environment Ready" > /home/ubuntu/setup_status.txt
+      # 6. הרצת השרת עם המשתנה המוזרק דרך יוזר ubuntu
+      # הערה: אנחנו משתמשים ב-sudo -u ubuntu כדי ש-PM2 ירוץ תחת המשתמש הרגיל ולא root
+      sudo -u ubuntu bash -c "export WORKER_INSTANCE_ID=${oci_core_instance.render_worker.id}; cd /home/ubuntu/controller-backend; pm2 start index.js --name 'controller-api'"
 
+      echo "Node.js Environment Ready and App Running with Worker ID: ${oci_core_instance.render_worker.id}" > /home/ubuntu/setup_status.txt
     EOF
     )
   }

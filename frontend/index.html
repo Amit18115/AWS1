@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת רינדור תמונות</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            direction: rtl;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .upload-section {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            margin-bottom: 30px;
+        }
+
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+
+        .upload-section.drag-over {
+            background: #e8ebff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .upload-section h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-section p {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .file-info {
+            background: #f0f2ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .file-info.active {
+            display: block;
+        }
+
+        .file-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .file-size {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status.active {
+            display: block;
+        }
+
+        .status.loading {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-section {
+            display: none;
+        }
+
+        .result-section.active {
+            display: block;
+        }
+
+        .result-image {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        .config-section {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .config-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .config-group {
+            margin-bottom: 15px;
+        }
+
+        .config-group label {
+            display: block;
+            color: #333;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .config-group input[type="text"],
+        .config-group input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .config-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 מערכת רינדור תמונות</h1>
+            <p>העלה תמונה והפעל רינדור בענן</p>
+        </div>
+
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-icon">📁</div>
+                <h2>גרור קובץ לכאן או לחץ להעלאה</h2>
+                <p>תומך בפורמטים: JPG, PNG, BMP, TIFF</p>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+
+            <!-- File Info -->
+            <div class="file-info" id="fileInfo">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-size" id="fileSize"></div>
+            </div>
+
+            <!-- Configuration Section -->
+            <div class="config-section">
+                <h3>⚙️ הגדרות רינדור</h3>
+                <div class="config-group">
+                    <label for="apiEndpoint">API Endpoint:</label>
+                    <input type="text" id="apiEndpoint" placeholder="https://your-api-endpoint.com/render" value="">
+                </div>
+                <div class="config-group">
+                    <label for="outputBucket">Output Bucket URL:</label>
+                    <input type="text" id="outputBucket" placeholder="https://objectstorage.region.oraclecloud.com/n/namespace/b/output-bucket/o/" value="">
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="actions">
+                <button class="btn" id="uploadBtn" disabled>העלה קובץ</button>
+                <button class="btn" id="renderBtn" disabled>התחל רינדור</button>
+            </div>
+
+            <!-- Status Messages -->
+            <div class="status" id="statusMsg"></div>
+
+            <!-- Result Section -->
+            <div class="result-section" id="resultSection">
+                <h3 style="color: #667eea; margin-bottom: 15px;">✨ תמונה מרונדרת:</h3>
+                <img id="resultImage" class="result-image" alt="Rendered Image">
+                <div style="text-align: center;">
+                    <button class="btn" id="downloadBtn">הורד תמונה</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let uploadedFileUrl = null;
+
+        // בתוך ה-script של ה-index.html
+        async function loadConfig() {
+        try {
+            // טעינת הקובץ שנוצר על ידי ה-Terraform
+            const response = await fetch('config.json');
+            if (!response.ok) throw new Error('Config file not found');
+            
+            const config = await response.json();
+            
+            // עדכון שדות ה-API והבאקט באופן אוטומטי
+            if (config.api_url) {
+                document.getElementById('apiEndpoint').value = config.api_url;
+            }
+            // אם תרצו להוסיף גם את כתובת הבאקט לקובץ ה-config
+            if (config.output_bucket_url) {
+                document.getElementById('outputBucket').value = config.output_bucket_url;
+            }
+            
+            console.log("Config loaded successfully:", config);
+        } catch (err) {
+            console.error("Could not load config.json, using defaults:", err);
+        }
+    }
+
+    // הפעלת הטעינה כשהדף עולה
+    window.addEventListener('DOMContentLoaded', loadConfig);
+
+        const fileInput = document.getElementById('fileInput');
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const renderBtn = document.getElementById('renderBtn');
+        const statusMsg = document.getElementById('statusMsg');
+        const resultSection = document.getElementById('resultSection');
+        const resultImage = document.getElementById('resultImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const apiEndpoint = document.getElementById('apiEndpoint');
+        const outputBucket = document.getElementById('outputBucket');
+
+        // Click to upload
+        uploadSection.addEventListener('click', () => fileInput.click());
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            handleFileSelect(e.target.files[0]);
+        });
+
+        // Drag and drop
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('drag-over');
+        });
+
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('drag-over');
+        });
+
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('drag-over');
+            handleFileSelect(e.dataTransfer.files[0]);
+        });
+
+        function handleFileSelect(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showStatus('error', 'אנא בחר קובץ תמונה תקין');
+                return;
+            }
+
+            selectedFile = file;
+            fileName.textContent = `📄 ${file.name}`;
+            fileSize.textContent = `גודל: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            fileInfo.classList.add('active');
+            uploadBtn.disabled = false;
+            showStatus('success', 'קובץ נבחר בהצלחה! לחץ על "העלה קובץ"');
+        }
+
+        // Upload file
+        uploadBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+
+            // For demo purposes, we'll simulate upload
+            // In production, this would upload to Input Bucket using Pre-Authenticated Request
+            showStatus('loading', 'מעלה קובץ...');
+            uploadBtn.disabled = true;
+
+            try {
+                // Simulate upload delay
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // In production, replace this with actual upload to Object Storage
+                uploadedFileUrl = `input-bucket/${selectedFile.name}`;
+                
+                showStatus('success', 'הקובץ הועלה בהצלחה! כעת ניתן להתחיל רינדור');
+                renderBtn.disabled = false;
+            } catch (err) {
+                showStatus('error', `שגיאה בהעלאת קובץ: ${err.message}`);
+                uploadBtn.disabled = false;
+            }
+        });
+
+        // Start render
+        renderBtn.addEventListener('click', async () => {
+            if (!uploadedFileUrl || !apiEndpoint.value) {
+                showStatus('error', 'אנא הזן API Endpoint');
+                return;
+            }
+
+            showStatus('loading', 'מבצע רינדור... אנא המתן');
+            renderBtn.disabled = true;
+
+            try {
+                const response = await fetch(apiEndpoint.value, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        inputFile: uploadedFileUrl,
+                        outputBucket: outputBucket.value || 'output-bucket'
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                // Display rendered image
+                const imageUrl = result.outputUrl || `${outputBucket.value}${result.outputFile}`;
+                resultImage.src = imageUrl;
+                resultSection.classList.add('active');
+                
+                showStatus('success', '✅ הרינדור הושלם בהצלחה!');
+            } catch (err) {
+                showStatus('error', `שגיאה ברינדור: ${err.message}`);
+            } finally {
+                renderBtn.disabled = false;
+            }
+        });
+
+        // Download rendered image
+        downloadBtn.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = resultImage.src;
+            link.download = 'rendered-image.png';
+            link.click();
+        });
+
+        function showStatus(type, message) {
+            statusMsg.className = `status ${type} active`;
+            
+            if (type === 'loading') {
+                statusMsg.innerHTML = `
+                    <div class="spinner"></div>
+                    <div>${message}</div>
+                `;
+            } else {
+                statusMsg.textContent = message;
+            }
+        }
+    </script>
+</body>
+</html>

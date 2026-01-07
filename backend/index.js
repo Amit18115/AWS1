@@ -10,7 +10,11 @@ app.use(express.json());
 const provider = new common.InstancePrincipalsAuthenticationDetailsProviderBuilder().build();
 
 // הגדרות OCID - יש לוודא שהערכים תואמים ל-Outputs של ה-Terraform
-const WORKER_INSTANCE_ID = "REPLACE_WITH_WORKER_OCID"; 
+const WORKER_INSTANCE_ID = process.env.WORKER_INSTANCE_ID;
+
+if (!WORKER_INSTANCE_ID) {
+    console.error("ERROR: WORKER_INSTANCE_ID environment variable is not set!");
+}
 const INPUT_BUCKET = "render_input_bucket";
 const OUTPUT_BUCKET = "render_output_bucket";
 const NAMESPACE = "axamiken9q9h"; // כפי שמופיע ב-plan שלכם
