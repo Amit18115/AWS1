@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>מערכת רינדור תמונות</title>
+    <title>מערכת רינדור מודלי Blender</title>
     <style>
+        /* CSS שלך נשאר כאן ללא שינוי */
         * {
             margin: 0;
             padding: 0;
@@ -245,26 +246,23 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎨 מערכת רינדור תמונות</h1>
-            <p>העלה תמונה והפעל רינדור בענן</p>
+            <h1>🎨 מערכת רינדור מודלי Blender</h1>
+            <p>העלה קובץ Blender (‎.blend) וקבל תמונה מרונדרת</p>
         </div>
 
         <div class="content">
-            <!-- Upload Section -->
             <div class="upload-section" id="uploadSection">
                 <div class="upload-icon">📁</div>
-                <h2>גרור קובץ לכאן או לחץ להעלאה</h2>
-                <p>תומך בפורמטים: JPG, PNG, BMP, TIFF</p>
-                <input type="file" id="fileInput" accept="image/*">
+                <h2>גרור קובץ Blender לכאן או לחץ להעלאה</h2>
+                <p>תומך בקבצי ‎.blend</p>
+                <input type="file" id="fileInput" accept=".blend">
             </div>
 
-            <!-- File Info -->
             <div class="file-info" id="fileInfo">
                 <div class="file-name" id="fileName"></div>
                 <div class="file-size" id="fileSize"></div>
             </div>
 
-            <!-- Configuration Section -->
             <div class="config-section">
                 <h3>⚙️ הגדרות רינדור</h3>
                 <div class="config-group">
@@ -272,21 +270,33 @@
                     <input type="text" id="apiEndpoint" placeholder="https://your-api-endpoint.com/render" value="">
                 </div>
                 <div class="config-group">
-                    <label for="outputBucket">Output Bucket URL:</label>
+                    <label for="outputBucket">Output Bucket Base URL:</label>
                     <input type="text" id="outputBucket" placeholder="https://objectstorage.region.oraclecloud.com/n/namespace/b/output-bucket/o/" value="">
+                </div>
+                <div class="config-group">
+                    <label for="resolutionX">רזולוציה רוחב (px):</label>
+                    <input type="number" id="resolutionX" value="1920" min="100" max="4000">
+                </div>
+                <div class="config-group">
+                    <label for="resolutionY">רזולוציה גובה (px):</label>
+                    <input type="number" id="resolutionY" value="1080" min="100" max="4000">
+                </div>
+                <div class="config-group">
+                    <label for="renderEngine">מנוע רינדור (Cycles/Eevee):</label>
+                    <input type="text" id="renderEngine" value="CYCLES" placeholder="CYCLES או EEVEE">
+                </div>
+                <div class="config-group">
+                    <label for="frames">פריימים לרינדור (אם יש אנימציה, 1 לסטילס):</label>
+                    <input type="number" id="frames" value="1" min="1" max="250">
                 </div>
             </div>
 
-            <!-- Actions -->
             <div class="actions">
-                <button class="btn" id="uploadBtn" disabled>העלה קובץ</button>
-                <button class="btn" id="renderBtn" disabled>התחל רינדור</button>
+                <button class="btn" id="uploadAndRenderBtn" disabled>העלה קובץ והתחל רינדור</button>
             </div>
 
-            <!-- Status Messages -->
             <div class="status" id="statusMsg"></div>
 
-            <!-- Result Section -->
             <div class="result-section" id="resultSection">
                 <h3 style="color: #667eea; margin-bottom: 15px;">✨ תמונה מרונדרת:</h3>
                 <img id="resultImage" class="result-image" alt="Rendered Image">
@@ -299,48 +309,47 @@
 
     <script>
         let selectedFile = null;
-        let uploadedFileUrl = null;
 
-        // בתוך ה-script של ה-index.html
+        // טעינת הגדרות API מהקובץ config.json
         async function loadConfig() {
-        try {
-            // טעינת הקובץ שנוצר על ידי ה-Terraform
-            const response = await fetch('config.json');
-            if (!response.ok) throw new Error('Config file not found');
-            
-            const config = await response.json();
-            
-            // עדכון שדות ה-API והבאקט באופן אוטומטי
-            if (config.api_url) {
-                document.getElementById('apiEndpoint').value = config.api_url;
+            try {
+                const response = await fetch('config.json');
+                if (!response.ok) throw new Error('Config file not found');
+                
+                const config = await response.json();
+                
+                if (config.api_url) {
+                    document.getElementById('apiEndpoint').value = config.api_url;
+                }
+                if (config.output_bucket_url) {
+                    document.getElementById('outputBucket').value = config.output_bucket_url;
+                }
+                
+                console.log("Config loaded successfully:", config);
+            } catch (err) {
+                console.error("Could not load config.json, using defaults:", err);
             }
-            // אם תרצו להוסיף גם את כתובת הבאקט לקובץ ה-config
-            if (config.output_bucket_url) {
-                document.getElementById('outputBucket').value = config.output_bucket_url;
-            }
-            
-            console.log("Config loaded successfully:", config);
-        } catch (err) {
-            console.error("Could not load config.json, using defaults:", err);
         }
-    }
 
-    // הפעלת הטעינה כשהדף עולה
-    window.addEventListener('DOMContentLoaded', loadConfig);
+        window.addEventListener('DOMContentLoaded', loadConfig);
 
         const fileInput = document.getElementById('fileInput');
         const uploadSection = document.getElementById('uploadSection');
         const fileInfo = document.getElementById('fileInfo');
         const fileName = document.getElementById('fileName');
         const fileSize = document.getElementById('fileSize');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const renderBtn = document.getElementById('renderBtn');
+        const uploadAndRenderBtn = document.getElementById('uploadAndRenderBtn');
         const statusMsg = document.getElementById('statusMsg');
         const resultSection = document.getElementById('resultSection');
         const resultImage = document.getElementById('resultImage');
         const downloadBtn = document.getElementById('downloadBtn');
         const apiEndpoint = document.getElementById('apiEndpoint');
         const outputBucket = document.getElementById('outputBucket');
+
+        const resolutionX = document.getElementById('resolutionX');
+        const resolutionY = document.getElementById('resolutionY');
+        const renderEngine = document.getElementById('renderEngine');
+        const frames = document.getElementById('frames');
 
         // Click to upload
         uploadSection.addEventListener('click', () => fileInput.click());
@@ -367,90 +376,72 @@
         });
 
         function handleFileSelect(file) {
-            if (!file || !file.type.startsWith('image/')) {
-                showStatus('error', 'אנא בחר קובץ תמונה תקין');
+            // שינוי: בדיקה לקובץ .blend
+            if (!file || !file.name.toLowerCase().endsWith('.blend')) {
+                showStatus('error', 'אנא בחר קובץ Blender (‎.blend) תקין.');
+                selectedFile = null;
+                uploadAndRenderBtn.disabled = true;
+                fileInfo.classList.remove('active');
                 return;
             }
 
             selectedFile = file;
             fileName.textContent = `📄 ${file.name}`;
-            fileSize.textContent = `גודל: ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+            fileSize.textContent = `גודל: ${(file.size / (1024 * 1024)).toFixed(2)} MB`;
             fileInfo.classList.add('active');
-            uploadBtn.disabled = false;
-            showStatus('success', 'קובץ נבחר בהצלחה! לחץ על "העלה קובץ"');
+            uploadAndRenderBtn.disabled = false;
+            showStatus('success', 'קובץ Blender נבחר בהצלחה! לחץ על "העלה קובץ והתחל רינדור"');
+            resultSection.classList.remove('active'); // נקה תוצאה קודמת
+            resultImage.src = '';
         }
 
-        // Upload file
-        uploadBtn.addEventListener('click', async () => {
-            if (!selectedFile) return;
+        // Upload and Render
+        uploadAndRenderBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    showStatus('loading', 'מעלה קובץ...');
+    
+    const formData = new FormData();
+    formData.append('blend_file', selectedFile);
 
-            // For demo purposes, we'll simulate upload
-            // In production, this would upload to Input Bucket using Pre-Authenticated Request
-            showStatus('loading', 'מעלה קובץ...');
-            uploadBtn.disabled = true;
-
-            try {
-                // Simulate upload delay
-                await new Promise(resolve => setTimeout(resolve, 1500));
-                
-                // In production, replace this with actual upload to Object Storage
-                uploadedFileUrl = `input-bucket/${selectedFile.name}`;
-                
-                showStatus('success', 'הקובץ הועלה בהצלחה! כעת ניתן להתחיל רינדור');
-                renderBtn.disabled = false;
-            } catch (err) {
-                showStatus('error', `שגיאה בהעלאת קובץ: ${err.message}`);
-                uploadBtn.disabled = false;
-            }
+    try {
+        // 1. שלח את הקובץ לרינדור
+        const response = await fetch(`${apiEndpoint.value}/render`, {
+            method: 'POST',
+            body: formData
         });
+        const data = await response.json();
+        
+        // 2. התחל לבדוק סטטוס כל 5 שניות
+        const checkStatus = setInterval(async () => {
+            showStatus('loading', 'הקובץ בעיבוד... הרינדור מתבצע בשרת');
+            const statusRes = await fetch(`${apiEndpoint.value}/status/${data.filename}`);
+            const statusData = await statusRes.json();
 
-        // Start render
-        renderBtn.addEventListener('click', async () => {
-            if (!uploadedFileUrl || !apiEndpoint.value) {
-                showStatus('error', 'אנא הזן API Endpoint');
-                return;
-            }
-
-            showStatus('loading', 'מבצע רינדור... אנא המתן');
-            renderBtn.disabled = true;
-
-            try {
-                const response = await fetch(apiEndpoint.value, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        inputFile: uploadedFileUrl,
-                        outputBucket: outputBucket.value || 'output-bucket'
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const result = await response.json();
-                
-                // Display rendered image
-                const imageUrl = result.outputUrl || `${outputBucket.value}${result.outputFile}`;
-                resultImage.src = imageUrl;
+            if (statusData.status === "Completed") {
+                clearInterval(checkStatus);
+                resultImage.src = statusData.output_image_url;
                 resultSection.classList.add('active');
-                
-                showStatus('success', '✅ הרינדור הושלם בהצלחה!');
-            } catch (err) {
-                showStatus('error', `שגיאה ברינדור: ${err.message}`);
-            } finally {
-                renderBtn.disabled = false;
+                showStatus('success', '✅ הרינדור הושלם!');
+                uploadAndRenderBtn.disabled = false;
             }
-        });
+        }, 5000);
 
+    } catch (err) {
+        showStatus('error', 'שגיאה: ' + err.message);
+        uploadAndRenderBtn.disabled = false;
+    }
+});
         // Download rendered image
         downloadBtn.addEventListener('click', () => {
-            const link = document.createElement('a');
-            link.href = resultImage.src;
-            link.download = 'rendered-image.png';
-            link.click();
+            if (resultImage.src) {
+                const link = document.createElement('a');
+                link.href = resultImage.src;
+                // שם הקובץ: blender-render-TIMESTAMP.png
+                link.download = `blender-render-${Date.now()}.png`; 
+                document.body.appendChild(link); // נדרש ל-Firefox
+                link.click();
+                document.body.removeChild(link); // נקה אחרי ההורדה
+            }
         });
 
         function showStatus(type, message) {

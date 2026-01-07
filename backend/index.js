@@ -2,68 +2,73 @@ const express = require('express');
 const common = require("oci-common");
 const core = require("oci-core");
 const os = require("oci-objectstorage");
+const multer = require('multer'); // להוספה: npm install multer
+const upload = multer({ storage: multer.memoryStorage() });
 
 const app = express();
 app.use(express.json());
 
-// יצירת ספק אימות המבוסס על זהות המכונה (Dynamic Group)
 const provider = new common.InstancePrincipalsAuthenticationDetailsProviderBuilder().build();
 
-// הגדרות OCID - יש לוודא שהערכים תואמים ל-Outputs של ה-Terraform
 const WORKER_INSTANCE_ID = process.env.WORKER_INSTANCE_ID;
-
-if (!WORKER_INSTANCE_ID) {
-    console.error("ERROR: WORKER_INSTANCE_ID environment variable is not set!");
-}
 const INPUT_BUCKET = "render_input_bucket";
 const OUTPUT_BUCKET = "render_output_bucket";
-const NAMESPACE = "axamiken9q9h"; // כפי שמופיע ב-plan שלכם
+const NAMESPACE = "axamiken9q9h";
 
-// יצירת קליינטים לניהול המשאבים
 const computeClient = new core.ComputeClient({ authenticationDetailsProvider: provider });
 const storageClient = new os.ObjectStorageClient({ authenticationDetailsProvider: provider });
 
-// 1. נתיב להתחלת רינדור (POST /render)
-app.post('/render', async (req, res) => {
-    const { filename } = req.body;
-    if (!filename) return res.status(400).json({ error: "Missing filename" });
-
+// נתיב לקבלת הקובץ והתחלת הרינדור
+app.post('/render', upload.single('blend_file'), async (req, res) => {
     try {
-        console.log(`Starting Worker for file: ${filename}`);
-        
-        // שליחת פקודה להדלקת ה-Worker
+        if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+        const filename = req.file.originalname;
+        console.log(`Uploading ${filename} to OCI...`);
+
+        // 1. העלאת הקובץ ל-Input Bucket
+        await storageClient.putObject({
+            namespaceName: NAMESPACE,
+            bucketName: INPUT_BUCKET,
+            putObjectBody: req.file.buffer,
+            objectName: filename
+        });
+
+        // 2. הדלקת ה-Worker
+        console.log(`Starting Worker for rendering...`);
         await computeClient.instanceAction({
             instanceId: WORKER_INSTANCE_ID,
             action: "START"
         });
 
+        // החזרת תשובה ל-Frontend כדי שיתחיל לבדוק סטטוס (Polling)
         res.json({ 
-            status: "Job started", 
-            message: `Worker ${WORKER_INSTANCE_ID} is powering up.` 
+            status: "Processing", 
+            filename: filename,
+            message: "File uploaded and worker starting" 
         });
     } catch (error) {
-        console.error("Error starting worker:", error);
+        console.error("Error:", error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// 2. נתיב לבדיקת סטטוס (GET /status/:filename)
+// נתיב בדיקת הסטטוס נשאר דומה
 app.get('/status/:filename', async (req, res) => {
     const filename = req.params.filename;
-    const renderedName = `rendered_${filename.split('.')[0]}.png`;
+    const baseName = filename.substring(0, filename.lastIndexOf('.'));
+    const renderedName = `rendered_${baseName}.png`;
 
     try {
-        // בדיקה האם הקובץ המרונדר כבר קיים בבאקט הפלט
         await storageClient.headObject({
             namespaceName: NAMESPACE,
             bucketName: OUTPUT_BUCKET,
             objectName: renderedName
         });
 
-        // אם לא נזרקה שגיאה, הקובץ נמצא
         res.json({ 
             status: "Completed", 
-            url: `https://objectstorage.il-jerusalem-1.oraclecloud.com/n/${NAMESPACE}/b/${OUTPUT_BUCKET}/o/${renderedName}` 
+            output_image_url: `https://objectstorage.il-jerusalem-1.oraclecloud.com/n/${NAMESPACE}/b/${OUTPUT_BUCKET}/o/${renderedName}` 
         });
     } catch (error) {
         if (error.statusCode === 404) {
@@ -75,6 +80,4 @@ app.get('/status/:filename', async (req, res) => {
 });
 
 const PORT = 80;
-app.listen(PORT, () => {
-    console.log(`Controller Backend running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
