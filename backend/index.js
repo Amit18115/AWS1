@@ -80,4 +80,7 @@ app.get('/status/:filename', async (req, res) => {
 });
 
 const PORT = 80;
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', team: 'Amit, Roni, Shir, Yarin, Nir' });
+});
 app.listen(PORT, () => console.log(`Backend running on port ${PORT}`));
