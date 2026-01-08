@@ -1,20 +1,8 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "cors": "^2.8.5",
     "express": "^5.2.1",
+    "flask-cors": "^0.0.1",
     "multer": "^2.0.2",
-    "oci-common": "^2.122.2",
-    "oci-core": "^2.122.2",
-    "oci-objectstorage": "^2.122.2"
+    "oci-sdk": "^2.122.2"
   }
 }
