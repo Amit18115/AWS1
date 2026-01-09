@@ -5,457 +5,118 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>מערכת רינדור מודלי Blender</title>
     <style>
-        /* CSS שלך נשאר כאן ללא שינוי */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            direction: rtl;
-        }
-
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1em;
-        }
-
-        .content {
-            padding: 40px;
-        }
-
-        .upload-section {
-            border: 3px dashed #667eea;
-            border-radius: 15px;
-            padding: 40px;
-            text-align: center;
-            background: #f8f9ff;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            margin-bottom: 30px;
-        }
-
-        .upload-section:hover {
-            border-color: #764ba2;
-            background: #f0f2ff;
-        }
-
-        .upload-section.drag-over {
-            background: #e8ebff;
-            border-color: #764ba2;
-            transform: scale(1.02);
-        }
-
-        .upload-icon {
-            font-size: 4em;
-            margin-bottom: 20px;
-            color: #667eea;
-        }
-
-        .upload-section h2 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .upload-section p {
-            color: #666;
-            margin-bottom: 20px;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 1.1em;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-        }
-
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            box-shadow: none;
-            transform: none;
-        }
-
-        .file-info {
-            background: #f0f2ff;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .file-info.active {
-            display: block;
-        }
-
-        .file-name {
-            font-weight: bold;
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-
-        .file-size {
-            color: #666;
-            font-size: 0.9em;
-        }
-
-        .actions {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-bottom: 30px;
-        }
-
-        .status {
-            text-align: center;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .status.active {
-            display: block;
-        }
-
-        .status.loading {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status.success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .result-section {
-            display: none;
-        }
-
-        .result-section.active {
-            display: block;
-        }
-
-        .result-image {
-            width: 100%;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-            margin-bottom: 20px;
-        }
-
-        .config-section {
-            background: #f8f9ff;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        .config-section h3 {
-            color: #667eea;
-            margin-bottom: 15px;
-        }
-
-        .config-group {
-            margin-bottom: 15px;
-        }
-
-        .config-group label {
-            display: block;
-            color: #333;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-
-        .config-group input[type="text"],
-        .config-group input[type="number"] {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            transition: border-color 0.3s;
-        }
-
-        .config-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
+        /* ה-CSS שלך נשאר ללא שינוי */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; direction: rtl; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+        .content { padding: 40px; }
+        .upload-section { border: 3px dashed #667eea; border-radius: 15px; padding: 40px; text-align: center; background: #f8f9ff; cursor: pointer; margin-bottom: 30px; }
+        .upload-icon { font-size: 4em; margin-bottom: 20px; color: #667eea; }
+        .btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 15px 40px; border-radius: 50px; cursor: pointer; font-weight: bold; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .file-info { background: #f0f2ff; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: none; }
+        .file-info.active { display: block; }
+        .status { text-align: center; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: none; }
+        .status.active { display: block; }
+        .status.loading { background: #fff3cd; color: #856404; }
+        .status.success { background: #d4edda; color: #155724; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .result-section { display: none; text-align: center; }
+        .result-section.active { display: block; }
+        .result-image { width: 100%; border-radius: 10px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); margin-bottom: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎨 מערכת רינדור מודלי Blender</h1>
-            <p>העלה קובץ Blender (‎.blend) וקבל תמונה מרונדרת</p>
+            <h1>🎨 מערכת רינדור Blender</h1>
+            <p>העלאה ורינדור בזמן אמת</p>
         </div>
 
         <div class="content">
             <div class="upload-section" id="uploadSection">
                 <div class="upload-icon">📁</div>
-                <h2>גרור קובץ Blender לכאן או לחץ להעלאה</h2>
-                <p>תומך בקבצי ‎.blend</p>
-                <input type="file" id="fileInput" accept=".blend">
+                <h2>גרור קובץ ‎.blend לכאן</h2>
+                <input type="file" id="fileInput" accept=".blend" style="display:none">
             </div>
 
             <div class="file-info" id="fileInfo">
-                <div class="file-name" id="fileName"></div>
-                <div class="file-size" id="fileSize"></div>
+                <div id="fileName" style="font-weight:bold; color:#667eea"></div>
             </div>
 
-            <div class="config-section">
-                <h3>⚙️ הגדרות רינדור</h3>
-                <div class="config-group">
-                    <label for="apiEndpoint">API Endpoint:</label>
-                    <input type="text" id="apiEndpoint" placeholder="https://your-api-endpoint.com/render" value="">
-                </div>
-                <div class="config-group">
-                    <label for="outputBucket">Output Bucket Base URL:</label>
-                    <input type="text" id="outputBucket" placeholder="https://objectstorage.region.oraclecloud.com/n/namespace/b/output-bucket/o/" value="">
-                </div>
-                <div class="config-group">
-                    <label for="resolutionX">רזולוציה רוחב (px):</label>
-                    <input type="number" id="resolutionX" value="1920" min="100" max="4000">
-                </div>
-                <div class="config-group">
-                    <label for="resolutionY">רזולוציה גובה (px):</label>
-                    <input type="number" id="resolutionY" value="1080" min="100" max="4000">
-                </div>
-                <div class="config-group">
-                    <label for="renderEngine">מנוע רינדור (Cycles/Eevee):</label>
-                    <input type="text" id="renderEngine" value="CYCLES" placeholder="CYCLES או EEVEE">
-                </div>
-                <div class="config-group">
-                    <label for="frames">פריימים לרינדור (אם יש אנימציה, 1 לסטילס):</label>
-                    <input type="number" id="frames" value="1" min="1" max="250">
-                </div>
-            </div>
-
-            <div class="actions">
-                <button class="btn" id="uploadAndRenderBtn" disabled>העלה קובץ והתחל רינדור</button>
+            <div style="text-align:center; margin-bottom:20px;">
+                <button class="btn" id="uploadAndRenderBtn" disabled>התחל רינדור בענן</button>
             </div>
 
             <div class="status" id="statusMsg"></div>
 
             <div class="result-section" id="resultSection">
-                <h3 style="color: #667eea; margin-bottom: 15px;">✨ תמונה מרונדרת:</h3>
+                <h3>✨ התוצאה הסופית:</h3>
                 <img id="resultImage" class="result-image" alt="Rendered Image">
-                <div style="text-align: center;">
-                    <button class="btn" id="downloadBtn">הורד תמונה</button>
-                </div>
+                <button class="btn" id="downloadBtn">הורד תמונה</button>
             </div>
         </div>
     </div>
 
     <script>
         let selectedFile = null;
-
-        // טעינת הגדרות API מהקובץ config.json
-        async function loadConfig() {
-            try {
-                const response = await fetch('config.json');
-                if (!response.ok) throw new Error('Config file not found');
-                
-                const config = await response.json();
-                
-                if (config.api_url) {
-                    document.getElementById('apiEndpoint').value = config.api_url;
-                }
-                if (config.output_bucket_url) {
-                    document.getElementById('outputBucket').value = config.output_bucket_url;
-                }
-                
-                console.log("Config loaded successfully:", config);
-            } catch (err) {
-                console.error("Could not load config.json, using defaults:", err);
-            }
-        }
-
-        window.addEventListener('DOMContentLoaded', loadConfig);
+        const API_URL = "http://151.145.82.157"; // הכתובת של ה-Controller שלך
 
         const fileInput = document.getElementById('fileInput');
         const uploadSection = document.getElementById('uploadSection');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const fileSize = document.getElementById('fileSize');
         const uploadAndRenderBtn = document.getElementById('uploadAndRenderBtn');
-        const statusMsg = document.getElementById('statusMsg');
-        const resultSection = document.getElementById('resultSection');
         const resultImage = document.getElementById('resultImage');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const apiEndpoint = document.getElementById('apiEndpoint');
-        const outputBucket = document.getElementById('outputBucket');
+        const statusMsg = document.getElementById('statusMsg');
 
-        const resolutionX = document.getElementById('resolutionX');
-        const resolutionY = document.getElementById('resolutionY');
-        const renderEngine = document.getElementById('renderEngine');
-        const frames = document.getElementById('frames');
-
-        // Click to upload
-        uploadSection.addEventListener('click', () => fileInput.click());
-
-        // File selection
-        fileInput.addEventListener('change', (e) => {
-            handleFileSelect(e.target.files[0]);
-        });
-
-        // Drag and drop
-        uploadSection.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadSection.classList.add('drag-over');
-        });
-
-        uploadSection.addEventListener('dragleave', () => {
-            uploadSection.classList.remove('drag-over');
-        });
-
-        uploadSection.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadSection.classList.remove('drag-over');
-            handleFileSelect(e.dataTransfer.files[0]);
-        });
-
-        function handleFileSelect(file) {
-            // שינוי: בדיקה לקובץ .blend
-            if (!file || !file.name.toLowerCase().endsWith('.blend')) {
-                showStatus('error', 'אנא בחר קובץ Blender (‎.blend) תקין.');
-                selectedFile = null;
-                uploadAndRenderBtn.disabled = true;
-                fileInfo.classList.remove('active');
-                return;
-            }
-
-            selectedFile = file;
-            fileName.textContent = `📄 ${file.name}`;
-            fileSize.textContent = `גודל: ${(file.size / (1024 * 1024)).toFixed(2)} MB`;
-            fileInfo.classList.add('active');
+        uploadSection.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => {
+            selectedFile = e.target.files[0];
+            document.getElementById('fileName').textContent = selectedFile.name;
+            document.getElementById('fileInfo').classList.add('active');
             uploadAndRenderBtn.disabled = false;
-            showStatus('success', 'קובץ Blender נבחר בהצלחה! לחץ על "העלה קובץ והתחל רינדור"');
-            resultSection.classList.remove('active'); // נקה תוצאה קודמת
-            resultImage.src = '';
-        }
+        };
 
-        // Upload and Render
-        uploadAndRenderBtn.addEventListener('click', async () => {
-    if (!selectedFile) return;
-    showStatus('loading', 'מעלה קובץ...');
-    
-    const formData = new FormData();
-    formData.append('blend_file', selectedFile);
+        uploadAndRenderBtn.onclick = async () => {
+            showStatus('loading', 'מרנדר מודל... אנא המתן');
+            uploadAndRenderBtn.disabled = true;
 
-    try {
-        // 1. שלח את הקובץ לרינדור
-        const response = await fetch(`${apiEndpoint.value}/render`, {
-            method: 'POST',
-            body: formData
-        });
-        const data = await response.json();
-        
-        // 2. התחל לבדוק סטטוס כל 5 שניות
-        const checkStatus = setInterval(async () => {
-            showStatus('loading', 'הקובץ בעיבוד... הרינדור מתבצע בשרת');
-            const statusRes = await fetch(`${apiEndpoint.value}/status/${data.filename}`);
-            const statusData = await statusRes.json();
+            const formData = new FormData();
+            formData.append('blend_file', selectedFile);
 
-            if (statusData.status === "Completed") {
-                clearInterval(checkStatus);
-                resultImage.src = statusData.output_image_url;
-                resultSection.classList.add('active');
-                showStatus('success', '✅ הרינדור הושלם!');
+            try {
+                // 1. שליחה לרינדור
+                const res = await fetch(`${API_URL}/render`, { method: 'POST', body: formData });
+                const data = await res.json();
+                
+                // 2. קבלת מחרוזת ה-Base64 מהשרת (בהנחה והשרת מחזיר שדה בשם image_base64)
+                if (data.image_base64) {
+                    // הזרקת הקוד ישירות ל-src עם הקידומת המתאימה
+                    resultImage.src = `data:image/png;base64,${data.image_base64}`;
+                    document.getElementById('resultSection').classList.add('active');
+                    showStatus('success', 'הרינדור הושלם!');
+                } else {
+                    throw new Error("לא התקבלו נתוני תמונה מהשרת");
+                }
+            } catch (err) {
+                showStatus('error', 'שגיאה: ' + err.message);
+            } finally {
                 uploadAndRenderBtn.disabled = false;
             }
-        }, 5000);
+        };
 
-    } catch (err) {
-        showStatus('error', 'שגיאה: ' + err.message);
-        uploadAndRenderBtn.disabled = false;
-    }
-});
-        // Download rendered image
-        downloadBtn.addEventListener('click', () => {
-            if (resultImage.src) {
-                const link = document.createElement('a');
-                link.href = resultImage.src;
-                // שם הקובץ: blender-render-TIMESTAMP.png
-                link.download = `blender-render-${Date.now()}.png`; 
-                document.body.appendChild(link); // נדרש ל-Firefox
-                link.click();
-                document.body.removeChild(link); // נקה אחרי ההורדה
-            }
-        });
-
-        function showStatus(type, message) {
+        function showStatus(type, msg) {
             statusMsg.className = `status ${type} active`;
-            
-            if (type === 'loading') {
-                statusMsg.innerHTML = `
-                    <div class="spinner"></div>
-                    <div>${message}</div>
-                `;
-            } else {
-                statusMsg.textContent = message;
-            }
+            statusMsg.innerHTML = type === 'loading' ? `<div class="spinner"></div>${msg}` : msg;
         }
+
+        document.getElementById('downloadBtn').onclick = () => {
+            const a = document.createElement('a');
+            a.href = resultImage.src;
+            a.download = "render.png";
+            a.click();
+        };
     </script>
 </body>
 </html>

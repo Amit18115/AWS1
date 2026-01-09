@@ -2,3 +2,7 @@ node_modules/
 .terraform/
 *.tfstate
 *.tfstate.backup
+
+.env
+*.pem
+config.json
