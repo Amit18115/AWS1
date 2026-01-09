@@ -9,14 +9,21 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// --- הגדרות קבועות ---
-const PORT = 80;
-const NAMESPACE = "axamiken9q9h";
-const INPUT_BUCKET = "render_input_bucket";
-const OUTPUT_BUCKET = "render_output_bucket";
-const WORKER_ID = "ocid1.instance.oc1.il-jerusalem-1.anwxiljr77u4iqicq2bcsrra6lcssdqf6jzbswlc6pnqvf37fmn5grdpfffa";
+// --- הגדרות מתוך ENV (במקום קבועות) ---
+const PORT = Number(process.env.PORT || 80);
+
+const NAMESPACE = process.env.OCI_NAMESPACE || "axamiken9q9h";
+const INPUT_BUCKET = process.env.INPUT_BUCKET || "render_input_bucket";
+const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET || "render_output_bucket";
+const WORKER_ID = process.env.WORKER_ID || "ocid1.instance.oc1.il-jerusalem-1.anwxiljr77u4iqicq2bcsrra6lcssdqf6jzbswlc6pnqvf37fmn5grdpfffa";
+
+// לוג אחד בתחילת הריצה כדי לוודא שלא “נעלם” ENV בגלל sudo
+console.log("CONFIG:", { PORT, NAMESPACE, INPUT_BUCKET, OUTPUT_BUCKET, WORKER_ID });
 
 const upload = multer({ storage: multer.memoryStorage() });
+
+// ... ממשיך אותו קוד שלך בדיוק
+
 
 async function startServer() {
     try {
@@ -48,12 +55,25 @@ async function startServer() {
                     objectName: filename
                 });
 
-                console.log("Action: Starting Worker instance..."); // הדפסה לטרמינל
-                
-                await computeClient.instanceAction({ 
-                    instanceId: WORKER_ID, 
-                    action: "START" 
+                console.log("Checking worker state...");
+
+                const inst = await computeClient.getInstance({
+                instanceId: WORKER_ID
                 });
+
+                const state = inst.instance.lifecycleState;
+                console.log("Worker state:", state);
+
+                if (state === "STOPPED") {
+                console.log("Worker is stopped → starting it");
+                await computeClient.instanceAction({
+                    instanceId: WORKER_ID,
+                    action: "START"
+                });
+                } else {
+                console.log("Worker already running → no action needed");
+                }
+
 
                 res.json({ status: "Started", filename: filename });
             } catch (error) {
