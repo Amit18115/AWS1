@@ -62,7 +62,7 @@ resource "oci_core_instance" "render_worker" {
     echo "Installation complete with Swap + Blender + Node + PM2" > /home/ubuntu/status.txt
 
     # 3) יצירת  (שים לב: פה משתמשים ב-WORKERJS ולא EOF)
-    cat > /home/ubuntu/worker.js <<'WORKERJS'
+    cat > /home/ubuntu/ <<'WORKERJS'
     const common = require("oci-common");
     const os = require("oci-objectstorage");
 
