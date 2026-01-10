@@ -183,20 +183,25 @@
 
     async function pollStatus() {
   const baseName = selectedFile.name.replace(/\.blend$/i, "");
-  const outName = `rendered_${baseName}.png`;
+  const outName = window.renderedName || `rendered_${baseName}.png`;
 
-  // בודקים אם הקובץ כבר קיים (HTTP 200)
   const url = `${API_URL}/api/output/${encodeURIComponent(outName)}?t=${Date.now()}`;
 
-  const res = await fetch(url, { method: "GET" });
+  try {
+    const res = await fetch(url, { method: "GET" });
 
-  if (res.ok) {
-    // מציגים את התמונה ישירות מה-controller
-    resultImage.src = url;
-    resultSection.classList.add("active");
-    showStatus("success", "הרינדור הושלם");
-    uploadBtn.disabled = false;
-  } else {
+    if (res.ok) {
+      resultImage.src = url;
+      resultSection.classList.add("active");
+      showStatus("success", "הרינדור הושלם");
+      uploadBtn.disabled = false;
+      return;
+    }
+
+    showStatus("loading", "עדיין מרנדר…");
+    setTimeout(pollStatus, 3000);
+  } catch (e) {
+    showStatus("loading", "מנסה להתחבר לשרת…");
     setTimeout(pollStatus, 3000);
   }
 }
