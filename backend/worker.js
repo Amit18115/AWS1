@@ -16,6 +16,7 @@ async function main() {
 
     while (true) {
       try {
+        // 1. קבלת רשימת אובייקטים
         const list = await storageClient.listObjects({
           namespaceName: NAMESPACE,
           bucketName: INPUT_BUCKET
@@ -33,9 +34,10 @@ async function main() {
         const outputBase = objName.replace(/\.[^/.]+$/, "");
         const localOutput = `/home/ubuntu/rendered_${outputBase}.png`;
 
-        console.log(`Processing: ${objName}`);
+        console.log(`--- New Job: ${objName} ---`);
 
-        // הורדת הקובץ
+        // 2. הורדת הקובץ מ-Object Storage
+        console.log("Downloading input file...");
         const getObj = await storageClient.getObject({
           namespaceName: NAMESPACE,
           bucketName: INPUT_BUCKET,
@@ -47,36 +49,63 @@ async function main() {
         writer.end();
         await new Promise(res => writer.on('finish', res));
 
-        // רינדור בבלנדר - השורה המעודכנת
-        console.log("Rendering with Blender 4.0 (Cycles CPU)...");
+        // 3. רינדור בבלנדר (מנוע מהיר ללא Cycles כדי למנוע קריסות זיכרון)
+        console.log("Rendering with Blender (Fast Mode)...");
         await new Promise((res, rej) => {
-        // exec(`/home/ubuntu/blender-4.0.2...`); // נטרלנו את בלנדר לרגע
-exec(`convert -size 100x100 xc:red ${localOutput}`, (err) => err ? rej(err) : res());
-          // exec(`/home/ubuntu/blender-4.0.2-linux-x64/blender -b ${localInput} -E CYCLES -o ${localOutput.replace('.png', '')} -F PNG -f 1 -- --cycles-device CPU --samples 4`, (err) => err ? rej(err) : res());
+          // פקודה זו משתמשת במנוע הדיפולטי שהוא המהיר ביותר למכונות Micro
+const blenderCmd = `/home/ubuntu/blender-4.0.2-linux-x64/blender -b "${localInput}" -o "${localOutput.replace('.png', '')}####" -F PNG -f 1`;          exec(blenderCmd, (err, stdout, stderr) => {
+            if (err) {
+              console.error("Blender Exec Error:", stderr);
+              return rej(err);
+            }
+            res();
+          });
         });
 
-        // העלאת תוצאה
-        console.log("Uploading result...");
-        await storageClient.putObject({
-          namespaceName: NAMESPACE,
-          bucketName: OUTPUT_BUCKET,
-          objectName: `rendered_${outputBase}.png`,
-          putObjectBody: fs.createReadStream(localOutput)
-        });
+       // 4. איתור הקובץ המרונדר (בדיקה של כל האופציות שבלנדר מייצר)
+let fileToUpload = localOutput;
+const possibleNames = [
+  localOutput,
+  localOutput.replace('.png', '0001.png'),
+  localOutput.replace('.png', '1.png')
+];
 
-        // מחיקה מה-Input ומקומי
+for (const name of possibleNames) {
+  if (fs.existsSync(name) && fs.statSync(name).size > 0) {
+    fileToUpload = name;
+    break;
+  }
+}
+
+        // 5. העלאת תוצאה רק אם הקובץ תקין ולא ריק
+        if (fs.existsSync(fileToUpload) && fs.statSync(fileToUpload).size > 0) {
+          console.log(`Uploading result: ${fileToUpload} (${fs.statSync(fileToUpload).size} bytes)`);
+          
+          await storageClient.putObject({
+            namespaceName: NAMESPACE,
+            bucketName: OUTPUT_BUCKET,
+            objectName: `rendered_${outputBase}.png`,
+            putObjectBody: fs.createReadStream(fileToUpload)
+          });
+          console.log("Upload successful!");
+        } else {
+          throw new Error("Render failed: Output file is missing or empty (0 bytes).");
+        }
+
+        // 6. ניקוי: מחיקה מה-Input ומקומי
         await storageClient.deleteObject({ namespaceName: NAMESPACE, bucketName: INPUT_BUCKET, objectName: objName });
         if (fs.existsSync(localInput)) fs.unlinkSync(localInput);
-        if (fs.existsSync(localOutput)) fs.unlinkSync(localOutput);
+        if (fs.existsSync(fileToUpload)) fs.unlinkSync(fileToUpload);
+        if (fs.existsSync(localOutput)) fs.unlinkSync(localOutput); // ליתר ביטחון
 
-        console.log("Done! Waiting for next file...");
+        console.log("Done! Searching for next job...");
       } catch (e) {
         console.error("Loop error:", e.message);
         await new Promise(r => setTimeout(r, 5000));
       }
     }
   } catch (e) {
-    console.error("Fatal:", e.message);
+    console.error("Fatal Worker Error:", e.message);
     process.exit(1);
   }
 }
