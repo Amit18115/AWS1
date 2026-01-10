@@ -182,18 +182,24 @@
     };
 
     async function pollStatus() {
-        const res = await fetch(`${API_URL}/status/${selectedFile.name}`);
-        const data = await res.json();
+  const baseName = selectedFile.name.replace(/\.blend$/i, "");
+  const outName = `rendered_${baseName}.png`;
 
-        if (data.status === "Completed") {
-            resultImage.src = `data:image/png;base64,${data.image_base64}`;
-            resultSection.classList.add("active");
-            showStatus("success", "הרינדור הושלם");
-            uploadBtn.disabled = false;
-        } else {
-            setTimeout(pollStatus, 5000);
-        }
-    }
+  // בודקים אם הקובץ כבר קיים (HTTP 200)
+  const url = `${API_URL}/api/output/${encodeURIComponent(outName)}?t=${Date.now()}`;
+
+  const res = await fetch(url, { method: "GET" });
+
+  if (res.ok) {
+    // מציגים את התמונה ישירות מה-controller
+    resultImage.src = url;
+    resultSection.classList.add("active");
+    showStatus("success", "הרינדור הושלם");
+    uploadBtn.disabled = false;
+  } else {
+    setTimeout(pollStatus, 3000);
+  }
+}
 
     function showStatus(type, msg) {
         statusMsg.className = `status ${type} active`;
