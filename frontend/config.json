@@ -1,5 +1,4 @@
-
 {
-  "api_url": "http://151.145.82.157/render",
+  "api_url": "http://130.110.238.158/render",
   "output_bucket_url": "https://objectstorage.il-jerusalem-1.oraclecloud.com/n/axamiken9q9h/b/render_output_bucket/o/"
 }

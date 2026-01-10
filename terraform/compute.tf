@@ -36,26 +36,130 @@ resource "oci_core_instance" "render_worker" {
     assign_public_ip = true
   }
 
-  metadata = {
-    ssh_authorized_keys = file(var.ssh_public_key_path)
+ metadata = {
+  ssh_authorized_keys = file(var.ssh_public_key_path)
 
-    # הוספתי הגדרת Swap כדי ש-Blender לא יקרוס מיד על 1GB RAM
-    user_data = base64encode(<<-EOF
-      #!/bin/bash
-      # יצירת זיכרון וירטואלי (Swap) של 4GB כדי לעזור לביצועים
-      fallocate -l 4G /swapfile
-      chmod 600 /swapfile
-      mkswap /swapfile
-      swapon /swapfile
-      echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  user_data = base64encode(<<-CLOUDINIT
+    #!/bin/bash
+    set -e
 
-      # עדכון והתקנת Blender
-      apt-get update
-      apt-get install -y blender
-      echo "Installation complete with Swap" > /home/ubuntu/status.txt
-    EOF
-    )
-  }
+    # 0) Swap (4GB) כדי לעזור ל-1GB RAM
+    fallocate -l 4G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=4096
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+    echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
+    # 1) עדכון והתקנת Blender + כלים
+    apt-get update
+    apt-get install -y blender git
+
+    # 2) התקנת Node.js 18 + PM2
+    curl -sL https://deb.nodesource.com/setup_18.x | bash -
+    apt-get install -y nodejs
+    npm install -g pm2
+
+    echo "Installation complete with Swap + Blender + Node + PM2" > /home/ubuntu/status.txt
+
+    # 3) יצירת worker.js (שים לב: פה משתמשים ב-WORKERJS ולא EOF)
+    cat > /home/ubuntu/worker.js <<'WORKERJS'
+    const common = require("oci-common");
+    const os = require("oci-objectstorage");
+
+    const NAMESPACE = process.env.OCI_NAMESPACE || "axamiken9q9h";
+    const INPUT_BUCKET = process.env.INPUT_BUCKET || "render_input_bucket";
+    const OUTPUT_BUCKET = process.env.OUTPUT_BUCKET || "render_output_bucket";
+
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    // PNG קטן 1x1 (דמה) להוכחת pipeline
+    const DUMMY_PNG_BASE64 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO4B8yQAAAAASUVORK5CYII=";
+
+    async function main() {
+      const provider = await new common.InstancePrincipalsAuthenticationDetailsProviderBuilder().build();
+      const storageClient = new os.ObjectStorageClient({ authenticationDetailsProvider: provider });
+
+      console.log("Worker started:", { NAMESPACE, INPUT_BUCKET, OUTPUT_BUCKET });
+
+      while (true) {
+        try {
+          const list = await storageClient.listObjects({
+            namespaceName: NAMESPACE,
+            bucketName: INPUT_BUCKET
+          });
+
+          const objs = list.listObjects.objects || [];
+          const blend = objs.find(o => o.name.toLowerCase().endsWith(".blend"));
+
+          if (!blend) {
+            await sleep(3000);
+            continue;
+          }
+
+          const objName = blend.name;
+          const baseName = objName.replace(/\.[^/.]+$/, "");
+          const outName = "rendered_" + baseName + ".png";
+
+          console.log("Processing:", objName, "=>", outName);
+
+          const pngBuffer = Buffer.from(DUMMY_PNG_BASE64, "base64");
+
+          await storageClient.putObject({
+            namespaceName: NAMESPACE,
+            bucketName: OUTPUT_BUCKET,
+            objectName: outName,
+            putObjectBody: pngBuffer,
+            contentType: "image/png"
+          });
+
+          await storageClient.deleteObject({
+            namespaceName: NAMESPACE,
+            bucketName: INPUT_BUCKET,
+            objectName: objName
+          });
+
+          console.log("Done:", outName);
+        } catch (e) {
+          console.error("Worker error:", e.message);
+          await sleep(3000);
+        }
+      }
+    }
+
+    main().catch(e => {
+      console.error("Fatal:", e);
+      process.exit(1);
+    });
+WORKERJS
+
+    # 4) התקנת חבילות Node לפרויקט worker
+    cd /home/ubuntu
+    npm init -y
+    npm i oci-common oci-objectstorage
+
+    # 5) ENV קבוע לכל המשתמשים
+    cat > /etc/profile.d/worker_vars.sh <<'VARS'
+    export OCI_NAMESPACE="axamiken9q9h"
+    export INPUT_BUCKET="render_input_bucket"
+    export OUTPUT_BUCKET="render_output_bucket"
+VARS
+    chmod +x /etc/profile.d/worker_vars.sh
+
+    # 6) הרשאות והרצת PM2 תחת ubuntu
+    chown -R ubuntu:ubuntu /home/ubuntu
+
+    sudo -u ubuntu bash -lc "source /etc/profile.d/worker_vars.sh; pm2 start /home/ubuntu/worker.js --name render-worker"
+    sudo -u ubuntu bash -lc "pm2 save"
+
+    # 7) (מומלץ) להרים את PM2 אוטומטית אחרי reboot
+    pm2 startup systemd -u ubuntu --hp /home/ubuntu
+    sudo -u ubuntu bash -lc "pm2 save"
+
+  CLOUDINIT
+  )
+}
+
 }
 
 resource "oci_core_instance" "controller_vm" {
